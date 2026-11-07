@@ -1,0 +1,93 @@
+name: Build Rio APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Criar projeto Android
+        run: |
+          mkdir -p RioRiseMenu/app/src/main/java/com/meuapp/riomenu
+          mkdir -p RioRiseMenu/app/src/main/res/values
+
+          cat > RioRiseMenu/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "RioRiseMenu"
+          include(":app")
+          EOF
+
+          cat > RioRiseMenu/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+          }
+          EOF
+
+          cat > RioRiseMenu/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.meuapp.riomenu'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.meuapp.riomenu'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 3
+                  versionName '3.0'
+              }
+          }
+          EOF
+
+          cat > RioRiseMenu/app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Rio Rise Menu</string>
+          </resources>
+          EOF
+
+      - name: Compilar APK
+        working-directory: RioRiseMenu
+        run: gradle assembleDebug
+
+      - name: Enviar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rio-Menu-APK
+          path: RioRiseMenu/app/build/outputs/apk/debug/app-debug.apk
